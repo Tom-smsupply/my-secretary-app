@@ -31,13 +31,13 @@
 
   <script>
     // --- CONFIG ---
-    const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
-    
-    // Using the 'latest' alias which is the most compatible across regions
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
+    const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec";
 
-    let parsedData = null; 
+    // Using a currently supported and stable model version
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${GEMINI_KEY}`;
+
+    let parsedData = null;
 
     function setLoading(id, isLoading, text) {
       const b = document.getElementById(id);
@@ -53,24 +53,38 @@
       const recognition = new Speech();
       recognition.onresult = (e) => {
         document.getElementById('transcript').value = e.results[0][0].transcript;
-        parseWithGemini(); 
+        parseWithGemini();
+      };
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        alert("Voice recognition error: " + event.error);
       };
       recognition.start();
     }
 
     async function parseWithGemini() {
-      const text = document.getElementById('transcript').value;
-      if (!text.trim()) return alert("No text provided.");
+      const text = document.getElementById('transcript').value.trim();
+      if (!text) return alert("No text provided.");
 
       setLoading('parseBtn', true, '');
+      const prompt = `Extract into JSON only. Output raw JSON object with no extra text, no markdown, no explanations. Use exactly these keys:
+{
+  "customer": "full name or 'Unknown'",
+  "meetingTime": "time like '2:30 PM' or empty string",
+  "followUpDay": "day like 'Friday' or 'None'",
+  "cleanNote": "the remaining details after removing triggers"
+}
+Note: ${text}`;
 
       const payload = {
         contents: [{
           parts: [{
-            text: `Extract into JSON: {"customer": "", "meetingTime": "", "followUpDay": "", "cleanNote": ""}. Output only the raw JSON. Note: ${text}`
+            text: prompt
           }]
         }]
       };
+
+      console.log("Sending to Gemini:", payload);
 
       try {
         const res = await fetch(API_URL, {
@@ -79,20 +93,30 @@
           body: JSON.stringify(payload)
         });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || "API Error");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(`HTTP ${res.status} - ${errorData.error?.message || "Unknown API error"}`);
+        }
 
-        const aiText = data.candidates[0].content.parts[0].text;
-        
-        // Find JSON between {}
+        const data = await res.json();
+        console.log("Gemini raw response:", data);
+
+        let aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (!aiText) throw new Error("No content returned from Gemini");
+
+        // Clean up common markdown/escaping issues
+        aiText = aiText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+
+        // Extract JSON object
         const match = aiText.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("AI didn't return JSON.");
-        
-        parsedData = JSON.parse(match[0]);
-        alert(`Parsed Successfully!\nCustomer: ${parsedData.customer}`);
+        if (!match) throw new Error("AI response did not contain valid JSON");
+
+        parsedData = JSON.parse(match[0].trim());
+
+        alert(`Parsed Successfully!\nCustomer: ${parsedData.customer || 'N/A'}\nTime: ${parsedData.meetingTime || '-'}\nFollow-up: ${parsedData.followUpDay || '-'}`);
       } catch (err) {
-        alert("Error: " + err.message);
-        console.error(err);
+        alert("Gemini Error: " + err.message);
+        console.error("Parse failed:", err);
       } finally {
         setLoading('parseBtn', false, '✨ Parse with Gemini');
       }
@@ -104,14 +128,15 @@
       try {
         await fetch(GAS_URL, {
           method: "POST",
-          mode: "no-cors", 
+          mode: "no-cors",
           body: JSON.stringify({ action: "addNote", ...parsedData })
         });
-        alert("Saved successfully!");
+        alert("Saved successfully! (check your Sheet & Calendar)");
         document.getElementById('transcript').value = '';
         parsedData = null;
       } catch (err) {
-        alert("Save failed.");
+        alert("Save failed: " + err.message);
+        console.error(err);
       } finally {
         setLoading('saveBtn', false, '💾 SAVE LOG & CALENDAR');
       }
@@ -122,9 +147,10 @@
       try {
         const res = await fetch(GAS_URL + "?action=getNotes");
         const text = await res.text();
-        document.getElementById('logs').innerHTML = text.replace(/\n/g, '<br>');
+        document.getElementById('logs').innerHTML = text.replace(/\n/g, '<br>') || "No logs yet.";
       } catch (err) {
-        alert("Load failed.");
+        alert("Load failed: " + err.message);
+        document.getElementById('logs').innerText = "Failed to load logs.";
       }
     }
   </script>
