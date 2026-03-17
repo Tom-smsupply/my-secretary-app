@@ -34,8 +34,8 @@
     const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4";
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec";
 
-    // Using a currently supported and stable model version
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${GEMINI_KEY}`;
+    // Updated to current stable model (March 2026) - supports generateContent in v1beta
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
     let parsedData = null;
 
@@ -67,14 +67,14 @@
       if (!text) return alert("No text provided.");
 
       setLoading('parseBtn', true, '');
-      const prompt = `Extract into JSON only. Output raw JSON object with no extra text, no markdown, no explanations. Use exactly these keys:
+      const prompt = `Output ONLY raw JSON object, nothing else - no markdown, no explanations, no code blocks. Use exactly these keys:
 {
   "customer": "full name or 'Unknown'",
   "meetingTime": "time like '2:30 PM' or empty string",
   "followUpDay": "day like 'Friday' or 'None'",
-  "cleanNote": "the remaining details after removing triggers"
+  "cleanNote": "remaining details after removing triggers"
 }
-Note: ${text}`;
+Note text: ${text}`;
 
       const payload = {
         contents: [{
@@ -84,7 +84,7 @@ Note: ${text}`;
         }]
       };
 
-      console.log("Sending to Gemini:", payload);
+      console.log("Sending request to Gemini:", payload);
 
       try {
         const res = await fetch(API_URL, {
@@ -99,15 +99,13 @@ Note: ${text}`;
         }
 
         const data = await res.json();
-        console.log("Gemini raw response:", data);
+        console.log("Gemini response:", data);
 
         let aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         if (!aiText) throw new Error("No content returned from Gemini");
 
-        // Clean up common markdown/escaping issues
-        aiText = aiText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+        aiText = aiText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').replace(/\\n/g, '');
 
-        // Extract JSON object
         const match = aiText.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("AI response did not contain valid JSON");
 
