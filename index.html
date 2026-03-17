@@ -36,8 +36,8 @@
     const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
     
-    // Using gemini-1.5-flash-latest on the v1 endpoint is the most stable setup
-    const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
+    // Stable endpoint
+    const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
     let parsedData = null; 
 
@@ -71,11 +71,14 @@
       const payload = {
         contents: [{
           parts: [{
-            text: `Extract into JSON: {"customer": "", "meetingTime": "", "followUpDay": "", "cleanNote": ""}. Input: ${text}`
+            text: `Extract the following note into a JSON object. Use ONLY these keys: "customer", "meetingTime", "followUpDay", "cleanNote". 
+
+            Note: ${text}`
           }]
         }],
         generationConfig: {
-          response_mime_type: "application/json",
+          // Changed to camelCase for the v1 stable API
+          responseMimeType: "application/json",
           temperature: 0.1
         }
       };
@@ -88,12 +91,16 @@
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || "Check API Key/Model");
+        if (!res.ok) throw new Error(data.error?.message || "API Error");
 
-        parsedData = JSON.parse(data.candidates[0].content.parts[0].text);
-        alert(`Parsed!\nCustomer: ${parsedData.customer}`);
+        // The response usually comes as a string inside the text field
+        const aiResponseText = data.candidates[0].content.parts[0].text;
+        parsedData = JSON.parse(aiResponseText);
+        
+        alert(`Parsed!\nCustomer: ${parsedData.customer}\nFollow-up: ${parsedData.followUpDay}`);
       } catch (err) {
         alert("Gemini Error: " + err.message);
+        console.error(err);
       } finally {
         setLoading(false, 'parseBtn', '✨ Parse with Gemini');
       }
