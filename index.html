@@ -30,13 +30,13 @@
     }
     textarea { 
       width: 100%; 
-      height: 220px; 
+      height: 200px; 
       padding: 15px; 
       border-radius: 12px; 
       font-size: 18px; 
       border: 2px solid #dadce0; 
       box-sizing: border-box; 
-      margin-bottom: 20px; 
+      margin-bottom: 10px; 
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); 
     }
     button { 
@@ -57,6 +57,10 @@
       background: #174ea6; 
       transform: translateY(2px); 
     }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
     #logs { 
       margin-top: 20px; 
       text-align: left; 
@@ -66,6 +70,14 @@
       padding: 10px; 
       border: 1px solid #dadce0; 
       border-radius: 8px; 
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .status-tag {
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: block;
     }
   </style>
 </head>
@@ -77,68 +89,82 @@
       <b>Triggers examples:</b><br>
       • Customer John Smith<br>
       • Meeting 2 PM<br>
-      • Follow up Friday<br>
-      Speak naturally or type for testing.
+      • Follow up Friday
     </div>
 
-    <button onclick="startVoice()">🎤 Start Voice Note</button>
+    <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
     
     <textarea id="transcript" placeholder="Voice will appear here... (or type your note)"></textarea>
     
-    <button onclick="parseWithGemini(document.getElementById('transcript').value)">Parse with Gemini</button>
-    <button onclick="saveNote()">SAVE LOG & CALENDAR</button>
+    <button id="parseBtn" onclick="parseWithGemini()">✨ Parse with Gemini</button>
+    <button id="saveBtn" onclick="saveNote()" style="background: #34a853;">💾 SAVE LOG & CALENDAR</button>
     
-    <button onclick="loadLogs()">📋 View Recent Logs</button>
-    <div id="logs"></div>
+    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
     
-    <button onclick="askGemini()">🤖 Ask Gemini about my notes</button>
-    <input id="query" placeholder="e.g. What notes for customer John?" style="width:100%; padding:12px; font-size:16px; margin:10px 0; border:2px solid #dadce0; border-radius:8px;">
+    <button onclick="loadLogs()" style="background: #5f6368;">📋 View Recent Logs</button>
+    <div id="logs">Recent logs will appear here...</div>
+    
+    <input id="query" placeholder="Ask about your notes..." style="width:100%; padding:12px; font-size:16px; margin:10px 0; border:2px solid #dadce0; border-radius:8px; box-sizing: border-box;">
+    <button onclick="askGemini()" style="background: #8e44ad;">🤖 Ask Gemini</button>
   </div>
 
   <script>
     // ────────────────────────────────────────────────
-    // CONFIG – PASTE YOUR VALUES HERE
-    const GAS_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_ID_HERE/exec";  // ← Replace with your actual GAS web app URL
-    const GEMINI_KEY = "AIzaSyYOUR_GEMINI_API_KEY_HERE";  // ← Replace with your real key
-    const MODEL = "gemini-1.5-flash";  // or gemini-1.5-pro if you have access
+    // CONFIG – MUST UPDATE THESE
+    const GAS_URL ="https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
+    const GEMINI_KEY =AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4; 
+    const MODEL = "gemini-1.5-flash";
 
-    let parsedData = null;  // Stores Gemini-parsed result
+    let parsedData = null; 
 
-    // Test: Confirm JS is alive
-    alert("JavaScript is running! Buttons should now work.");
+    // Helper to toggle buttons during API calls
+    function setLoading(isLoading, btnId, originalText) {
+      const btn = document.getElementById(btnId);
+      if (isLoading) {
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+      } else {
+        btn.disabled = false;
+        btn.innerText = originalText;
+      }
+    }
 
     function startVoice() {
-      if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-        alert("Voice recognition not supported in this browser. Type instead.");
-        return;
-      }
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      
+      recognition.onstart = () => {
+        document.getElementById('voiceBtn').innerText = "Listening...";
+        document.getElementById('voiceBtn').style.background = "#ea4335";
+      };
 
       recognition.onresult = (event) => {
         const text = event.results[0][0].transcript;
         document.getElementById('transcript').value = text;
-        parseWithGemini(text);  // Auto-parse after speaking
+        parseWithGemini(); 
       };
 
-      recognition.onerror = (event) => {
-        alert("Voice error: " + event.error);
+      recognition.onend = () => {
+        document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note";
+        document.getElementById('voiceBtn').style.background = "#1a73e8";
       };
 
       recognition.start();
     }
 
-    async function parseWithGemini(rawText) {
+    async function parseWithGemini() {
+      const rawText = document.getElementById('transcript').value;
       if (!rawText.trim()) return alert("Enter or speak a note first.");
 
-      const prompt = `Parse this voice/customer note into strict JSON only. No extra text. Use these keys:
+      setLoading(true, 'parseBtn', '✨ Parse with Gemini');
+
+      const prompt = `Task: Extract data from the following note into JSON.
+      Required Format:
       {
-        "customer": "full name or Unknown",
+        "customer": "Full Name or 'Unknown'",
         "meetingTime": "e.g. 2:30 PM or empty string",
-        "followUpDay": "e.g. Friday or None",
-        "cleanNote": "cleaned details without triggers"
+        "followUpDay": "e.g. Friday or 'None'",
+        "cleanNote": "The main details without the trigger words"
       }
       Note: ${rawText}`;
 
@@ -151,58 +177,64 @@
           })
         });
 
-        if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error.message);
 
-        const json = await res.json();
-        const textResponse = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const textResponse = data.candidates[0].content.parts[0].text;
+        
+        // Use Regex to find the JSON block in case Gemini adds conversational filler
+        const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Could not find JSON in AI response.");
 
-        // Gemini often wraps in ```json ... ```
-        const cleaned = textResponse.replace(/```json|```/g, '').trim();
-        parsedData = JSON.parse(cleaned);
+        parsedData = JSON.parse(jsonMatch[0]);
 
-        alert(`Parsed successfully!\nCustomer: ${parsedData.customer}\nFollow-up: ${parsedData.followUpDay}`);
+        alert(`Ready to Save!\n👤 Customer: ${parsedData.customer}\n📅 Follow-up: ${parsedData.followUpDay}`);
       } catch (err) {
-        alert("Gemini parse failed: " + err.message + "\nCheck API key or network.");
+        alert("Gemini Error: " + err.message);
         console.error(err);
+      } finally {
+        setLoading(false, 'parseBtn', '✨ Parse with Gemini');
       }
     }
 
     async function saveNote() {
-      if (!parsedData) return alert("Parse a note first (voice or click Parse button).");
+      if (!parsedData) return alert("Please parse the note with Gemini first.");
+
+      setLoading(true, 'saveBtn', '💾 SAVE LOG & CALENDAR');
 
       try {
-        const res = await fetch(GAS_URL, {
+        await fetch(GAS_URL, {
           method: "POST",
-          mode: "no-cors",  // Helps with GAS CORS quirks; response text limited
+          mode: "no-cors", 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "addNote", ...parsedData })
         });
 
-        // no-cors → can't read response text reliably, so assume success unless network error
-        alert("Save attempted! Check your Google Sheet & Calendar.");
+        alert("Success! Sent to Google Sheets/Calendar.");
         document.getElementById('transcript').value = '';
         parsedData = null;
       } catch (err) {
-        alert("Save failed: " + err.message + "\nCheck GAS URL / deployment settings.");
+        alert("Save failed: " + err.message);
+      } finally {
+        setLoading(false, 'saveBtn', '💾 SAVE LOG & CALENDAR');
       }
     }
 
     async function loadLogs() {
+      const logDiv = document.getElementById('logs');
+      logDiv.innerHTML = "Loading logs...";
       try {
         const res = await fetch(GAS_URL + "?action=getNotes");
         const text = await res.text();
-        document.getElementById('logs').innerHTML = "<pre>" + text.replace(/\n/g, '<br>') + "</pre>";
+        logDiv.innerHTML = text ? text.replace(/\n/g, '<br>') : "No logs found.";
       } catch (err) {
-        alert("Load logs failed: " + err.message);
+        logDiv.innerHTML = "Error loading logs: " + err.message;
       }
     }
 
     async function askGemini() {
-      const query = document.getElementById('query').value.trim();
-      if (!query) return alert("Enter a question first.");
-
-      alert("Ask feature: Coming soon – for now, check logs or ask in Gemini app directly.");
-      // Future: fetch logs → send to Gemini with query → show answer
+      alert("Ask Gemini coming soon! Ensure your GAS 'getNotes' action is working first.");
     }
   </script>
 </body>
