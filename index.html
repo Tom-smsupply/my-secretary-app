@@ -3,162 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="logo-192.png">
-  <link rel="icon" href="logo-192.png">
   <title>My Secretary</title>
   <style>
-    body { 
-      font-family: 'Segoe UI', Roboto, sans-serif; 
-      padding: 20px; 
-      text-align: center; 
-      background: #f8f9fa; 
-      margin: 0; 
-    }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; padding: 20px; text-align: center; background: #f8f9fa; margin: 0; }
     .container { max-width: 500px; margin: auto; }
     h2 { color: #1a73e8; font-size: 28px; margin-top: 10px; }
-    .hint { 
-      font-size: 14px; 
-      color: #5f6368; 
-      margin-bottom: 20px; 
-      background: #e8f0fe; 
-      padding: 12px; 
-      border-radius: 8px; 
-      border: 1px solid #c2d7ff; 
-      text-align: left; 
-      line-height: 1.4; 
-    }
-    textarea { 
-      width: 100%; 
-      height: 200px; 
-      padding: 15px; 
-      border-radius: 12px; 
-      font-size: 18px; 
-      border: 2px solid #dadce0; 
-      box-sizing: border-box; 
-      margin-bottom: 10px; 
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); 
-    }
-    button { 
-      width: 100%; 
-      padding: 18px; 
-      background: #1a73e8; 
-      color: white; 
-      border: none; 
-      border-radius: 12px; 
-      font-weight: bold; 
-      font-size: 18px; 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-      cursor: pointer; 
-      transition: 0.2s; 
-      margin: 8px 0; 
-    }
-    button:active { 
-      background: #174ea6; 
-      transform: translateY(2px); 
-    }
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    #logs { 
-      margin-top: 20px; 
-      text-align: left; 
-      max-height: 300px; 
-      overflow-y: auto; 
-      background: white; 
-      padding: 10px; 
-      border: 1px solid #dadce0; 
-      border-radius: 8px; 
-      font-family: monospace;
-      font-size: 12px;
-    }
+    .hint { font-size: 14px; color: #5f6368; margin-bottom: 20px; background: #e8f0fe; padding: 12px; border-radius: 8px; border: 1px solid #c2d7ff; text-align: left; line-height: 1.4; }
+    textarea { width: 100%; height: 200px; padding: 15px; border-radius: 12px; font-size: 18px; border: 2px solid #dadce0; box-sizing: border-box; margin-bottom: 10px; }
+    button { width: 100%; padding: 18px; background: #1a73e8; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; margin: 8px 0; }
+    button:active { background: #174ea6; transform: translateY(2px); }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #logs { margin-top: 20px; text-align: left; max-height: 300px; overflow-y: auto; background: white; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-family: monospace; font-size: 12px; }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>My Secretary</h2>
-    
     <div class="hint">
-      <b>Triggers examples:</b><br>
-      • Customer John Smith<br>
-      • Meeting 2 PM<br>
-      • Follow up Friday
+      <b>Try this:</b> "Customer John Doe meeting at 4 PM tomorrow follow up Friday"
     </div>
-
     <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
-    
-    <textarea id="transcript" placeholder="Voice will appear here... (or type your note)"></textarea>
-    
+    <textarea id="transcript" placeholder="Voice will appear here..."></textarea>
     <button id="parseBtn" onclick="parseWithGemini()">✨ Parse with Gemini</button>
     <button id="saveBtn" onclick="saveNote()" style="background: #34a853;">💾 SAVE LOG & CALENDAR</button>
-    
     <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
-    
     <button onclick="loadLogs()" style="background: #5f6368;">📋 View Recent Logs</button>
     <div id="logs">Recent logs will appear here...</div>
-    
-    <input id="query" placeholder="Ask about your notes..." style="width:100%; padding:12px; font-size:16px; margin:10px 0; border:2px solid #dadce0; border-radius:8px; box-sizing: border-box;">
-    <button onclick="askGemini()" style="background: #8e44ad;">🤖 Ask Gemini</button>
   </div>
 
   <script>
-    // ────────────────────────────────────────────────
-    // 1. CONFIGURATION (Updated to Stable v1 API)
-    const MODEL_ID = "gemini-1.5-flash"; 
+    // --- CONFIG ---
     const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
-
-    // This is the stable production endpoint
-    const API_URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL_ID}:generateContent?key=${GEMINI_KEY}`;
+    
+    // Using gemini-1.5-flash-latest on the v1 endpoint is the most stable setup
+    const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
 
     let parsedData = null; 
 
     function setLoading(isLoading, btnId, originalText) {
       const btn = document.getElementById(btnId);
-      if (!btn) return;
-      btn.disabled = isLoading;
-      btn.innerText = isLoading ? "Processing..." : originalText;
+      if (btn) {
+        btn.disabled = isLoading;
+        btn.innerText = isLoading ? "Processing..." : originalText;
+      }
     }
 
     function startVoice() {
       const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Speech) return alert("Voice recognition not supported. Please use Chrome.");
-      
+      if (!Speech) return alert("Use Chrome for voice support.");
       const recognition = new Speech();
-      recognition.lang = "en-US";
-      
-      recognition.onstart = () => {
-        const vBtn = document.getElementById('voiceBtn');
-        vBtn.innerText = "Listening...";
-        vBtn.style.background = "#ea4335";
-      };
-
-      recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        document.getElementById('transcript').value = text;
+      recognition.onstart = () => { document.getElementById('voiceBtn').innerText = "Listening..."; };
+      recognition.onresult = (e) => {
+        document.getElementById('transcript').value = e.results[0][0].transcript;
         parseWithGemini(); 
       };
-
-      recognition.onend = () => {
-        const vBtn = document.getElementById('voiceBtn');
-        vBtn.innerText = "🎤 Start Voice Note";
-        vBtn.style.background = "#1a73e8";
-      };
-
+      recognition.onend = () => { document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note"; };
       recognition.start();
     }
 
     async function parseWithGemini() {
-      const rawText = document.getElementById('transcript').value;
-      if (!rawText.trim()) return alert("Enter or speak a note first.");
+      const text = document.getElementById('transcript').value;
+      if (!text.trim()) return alert("Enter some text first.");
 
       setLoading(true, 'parseBtn', '✨ Parse with Gemini');
 
       const payload = {
         contents: [{
           parts: [{
-            text: `Return ONLY a JSON object with these keys: "customer", "meetingTime", "followUpDay", "cleanNote". Input text: ${rawText}`
+            text: `Extract into JSON: {"customer": "", "meetingTime": "", "followUpDay": "", "cleanNote": ""}. Input: ${text}`
           }]
         }],
         generationConfig: {
@@ -175,37 +88,27 @@
         });
 
         const data = await res.json();
-        
-        if (!res.ok) {
-          throw new Error(data.error?.message || "API Error");
-        }
+        if (!res.ok) throw new Error(data.error?.message || "Check API Key/Model");
 
-        const textResponse = data.candidates[0].content.parts[0].text;
-        parsedData = JSON.parse(textResponse);
-
-        alert(`Ready to save!\n👤 Customer: ${parsedData.customer}\n📅 Time: ${parsedData.meetingTime}`);
+        parsedData = JSON.parse(data.candidates[0].content.parts[0].text);
+        alert(`Parsed!\nCustomer: ${parsedData.customer}`);
       } catch (err) {
         alert("Gemini Error: " + err.message);
-        console.error("Debug info:", err);
       } finally {
         setLoading(false, 'parseBtn', '✨ Parse with Gemini');
       }
     }
 
     async function saveNote() {
-      if (!parsedData) return alert("Parse with Gemini first.");
-
+      if (!parsedData) return alert("Parse first!");
       setLoading(true, 'saveBtn', '💾 SAVE LOG & CALENDAR');
-
       try {
         await fetch(GAS_URL, {
           method: "POST",
           mode: "no-cors", 
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "addNote", ...parsedData })
         });
-
-        alert("Success! Sent to Google.");
+        alert("Saved to Google!");
         document.getElementById('transcript').value = '';
         parsedData = null;
       } catch (err) {
@@ -216,19 +119,14 @@
     }
 
     async function loadLogs() {
-      const logDiv = document.getElementById('logs');
-      logDiv.innerHTML = "Fetching...";
+      document.getElementById('logs').innerText = "Fetching...";
       try {
         const res = await fetch(GAS_URL + "?action=getNotes");
         const text = await res.text();
-        logDiv.innerHTML = text ? text.replace(/\n/g, '<br>') : "No logs found.";
+        document.getElementById('logs').innerHTML = text.replace(/\n/g, '<br>');
       } catch (err) {
-        logDiv.innerHTML = "Could not load logs.";
+        document.getElementById('logs').innerText = "Error loading.";
       }
-    }
-
-    async function askGemini() {
-      alert("Feature coming soon!");
     }
   </script>
 </body>
