@@ -20,7 +20,7 @@
   <div class="container">
     <h2>My Secretary</h2>
     <div class="hint">
-      <b>Try this:</b> "Customer John Doe meeting at 4 PM tomorrow follow up Friday"
+      <b>Speak naturally:</b> "Meet with Sarah at 2 PM on Friday about the new project."
     </div>
     <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
     <textarea id="transcript" placeholder="Voice will appear here..."></textarea>
@@ -35,8 +35,6 @@
     // --- CONFIG ---
     const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
-    
-    // Stable endpoint
     const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
     let parsedData = null; 
@@ -53,12 +51,10 @@
       const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!Speech) return alert("Use Chrome for voice support.");
       const recognition = new Speech();
-      recognition.onstart = () => { document.getElementById('voiceBtn').innerText = "Listening..."; };
       recognition.onresult = (e) => {
         document.getElementById('transcript').value = e.results[0][0].transcript;
         parseWithGemini(); 
       };
-      recognition.onend = () => { document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note"; };
       recognition.start();
     }
 
@@ -68,19 +64,16 @@
 
       setLoading(true, 'parseBtn', '✨ Parse with Gemini');
 
+      // We removed responseMimeType and moved the JSON instruction into the text prompt itself.
       const payload = {
         contents: [{
           parts: [{
-            text: `Extract the following note into a JSON object. Use ONLY these keys: "customer", "meetingTime", "followUpDay", "cleanNote". 
-
-            Note: ${text}`
+            text: `Extract the following info into a raw JSON object. Do not include markdown formatting or backticks. Just the raw {}.
+            Keys: "customer", "meetingTime", "followUpDay", "cleanNote". 
+            
+            Text: ${text}`
           }]
-        }],
-        generationConfig: {
-          // Changed to camelCase for the v1 stable API
-          responseMimeType: "application/json",
-          temperature: 0.1
-        }
+        }]
       };
 
       try {
@@ -93,14 +86,16 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || "API Error");
 
-        // The response usually comes as a string inside the text field
-        const aiResponseText = data.candidates[0].content.parts[0].text;
-        parsedData = JSON.parse(aiResponseText);
+        const aiText = data.candidates[0].content.parts[0].text.trim();
         
-        alert(`Parsed!\nCustomer: ${parsedData.customer}\nFollow-up: ${parsedData.followUpDay}`);
+        // Use regex to find the JSON part in case Gemini adds text around it
+        const jsonOnly = aiText.match(/\{[\s\S]*\}/);
+        if (!jsonOnly) throw new Error("No valid JSON found in response.");
+
+        parsedData = JSON.parse(jsonOnly[0]);
+        alert(`AI Parsed Successfully!\nCustomer: ${parsedData.customer}`);
       } catch (err) {
         alert("Gemini Error: " + err.message);
-        console.error(err);
       } finally {
         setLoading(false, 'parseBtn', '✨ Parse with Gemini');
       }
