@@ -3,17 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="logo-192.png">
+  <link rel="icon" href="logo-192.png">
   <title>My Secretary</title>
   <style>
-    body { font-family: 'Segoe UI', Roboto, sans-serif; padding: 20px; text-align: center; background: #f8f9fa; margin: 0; }
+    body { 
+      font-family: 'Segoe UI', Roboto, sans-serif; 
+      padding: 20px; 
+      text-align: center; 
+      background: #f8f9fa; 
+      margin: 0; 
+    }
     .container { max-width: 500px; margin: auto; }
     h2 { color: #1a73e8; font-size: 28px; margin-top: 10px; }
-    .hint { font-size: 14px; color: #5f6368; margin-bottom: 20px; background: #e8f0fe; padding: 12px; border-radius: 8px; border: 1px solid #c2d7ff; text-align: left; line-height: 1.4; }
-    textarea { width: 100%; height: 200px; padding: 15px; border-radius: 12px; font-size: 18px; border: 2px solid #dadce0; box-sizing: border-box; margin-bottom: 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
-    button { width: 100%; padding: 18px; background: #1a73e8; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: 0.2s; margin: 8px 0; }
-    button:active { background: #174ea6; transform: translateY(2px); }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    #logs { margin-top: 20px; text-align: left; max-height: 300px; overflow-y: auto; background: white; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-family: monospace; font-size: 12px; }
+    .hint { 
+      font-size: 14px; 
+      color: #5f6368; 
+      margin-bottom: 20px; 
+      background: #e8f0fe; 
+      padding: 12px; 
+      border-radius: 8px; 
+      border: 1px solid #c2d7ff; 
+      text-align: left; 
+      line-height: 1.4; 
+    }
+    textarea { 
+      width: 100%; 
+      height: 200px; 
+      padding: 15px; 
+      border-radius: 12px; 
+      font-size: 18px; 
+      border: 2px solid #dadce0; 
+      box-sizing: border-box; 
+      margin-bottom: 10px; 
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); 
+    }
+    button { 
+      width: 100%; 
+      padding: 18px; 
+      background: #1a73e8; 
+      color: white; 
+      border: none; 
+      border-radius: 12px; 
+      font-weight: bold; 
+      font-size: 18px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+      cursor: pointer; 
+      transition: 0.2s; 
+      margin: 8px 0; 
+    }
+    button:active { 
+      background: #174ea6; 
+      transform: translateY(2px); 
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #logs { 
+      margin-top: 20px; 
+      text-align: left; 
+      max-height: 300px; 
+      overflow-y: auto; 
+      background: white; 
+      padding: 10px; 
+      border: 1px solid #dadce0; 
+      border-radius: 8px; 
+      font-family: monospace;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -28,6 +87,7 @@
     </div>
 
     <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
+    
     <textarea id="transcript" placeholder="Voice will appear here... (or type your note)"></textarea>
     
     <button id="parseBtn" onclick="parseWithGemini()">✨ Parse with Gemini</button>
@@ -44,34 +104,55 @@
 
   <script>
     // ────────────────────────────────────────────────
-    // CONFIG – REPLACED WITH YOUR KEYS (ADDED QUOTES)
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
-    const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
+    // 1. CONFIGURATION (Defined at the top level)
     const MODEL = "gemini-1.5-flash";
+    const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
 
     let parsedData = null; 
 
+    // Confirm loading in Console
+    console.log("App initialized with Model:", MODEL);
+
+    // ────────────────────────────────────────────────
+    // 2. HELPER FUNCTIONS
     function setLoading(isLoading, btnId, originalText) {
       const btn = document.getElementById(btnId);
+      if (!btn) return;
       btn.disabled = isLoading;
       btn.innerText = isLoading ? "Processing..." : originalText;
     }
 
+    // ────────────────────────────────────────────────
+    // 3. CORE LOGIC
     function startVoice() {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Speech) {
+        alert("Voice recognition not supported in this browser. Try Chrome or Safari.");
+        return;
+      }
+      
+      const recognition = new Speech();
       recognition.lang = "en-US";
+      
       recognition.onstart = () => {
-        document.getElementById('voiceBtn').innerText = "Listening...";
-        document.getElementById('voiceBtn').style.background = "#ea4335";
+        const vBtn = document.getElementById('voiceBtn');
+        vBtn.innerText = "Listening...";
+        vBtn.style.background = "#ea4335";
       };
+
       recognition.onresult = (event) => {
-        document.getElementById('transcript').value = event.results[0][0].transcript;
+        const text = event.results[0][0].transcript;
+        document.getElementById('transcript').value = text;
         parseWithGemini(); 
       };
+
       recognition.onend = () => {
-        document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note";
-        document.getElementById('voiceBtn').style.background = "#1a73e8";
+        const vBtn = document.getElementById('voiceBtn');
+        vBtn.innerText = "🎤 Start Voice Note";
+        vBtn.style.background = "#1a73e8";
       };
+
       recognition.start();
     }
 
@@ -81,10 +162,11 @@
 
       setLoading(true, 'parseBtn', '✨ Parse with Gemini');
 
+      // Constructing the API Request Body
       const payload = {
         contents: [{
           parts: [{
-            text: `Extract data into JSON. Keys: "customer", "meetingTime", "followUpDay", "cleanNote". Note: ${rawText}`
+            text: `Extract data into JSON format with keys: "customer", "meetingTime", "followUpDay", "cleanNote". Note: ${rawText}`
           }]
         }],
         generationConfig: {
@@ -101,15 +183,16 @@
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || "API Error");
+        
+        if (!res.ok) throw new Error(data.error?.message || "Gemini API Error");
 
         const textResponse = data.candidates[0].content.parts[0].text;
         parsedData = JSON.parse(textResponse);
 
-        alert(`Parsed Successfully!\n👤 Customer: ${parsedData.customer}\n📅 Follow-up: ${parsedData.followUpDay}`);
+        alert(`AI Parsed Successfully!\n👤 Customer: ${parsedData.customer}\n📅 Time: ${parsedData.meetingTime}`);
       } catch (err) {
         alert("Gemini Error: " + err.message);
-        console.error(err);
+        console.error("Full Error:", err);
       } finally {
         setLoading(false, 'parseBtn', '✨ Parse with Gemini');
       }
@@ -117,9 +200,11 @@
 
     async function saveNote() {
       if (!parsedData) return alert("Please parse the note with Gemini first.");
+
       setLoading(true, 'saveBtn', '💾 SAVE LOG & CALENDAR');
 
       try {
+        // mode: "no-cors" is used because Google Apps Script doesn't always send CORS headers
         await fetch(GAS_URL, {
           method: "POST",
           mode: "no-cors", 
@@ -132,6 +217,7 @@
         parsedData = null;
       } catch (err) {
         alert("Save failed: " + err.message);
+        console.error("Save error:", err);
       } finally {
         setLoading(false, 'saveBtn', '💾 SAVE LOG & CALENDAR');
       }
@@ -150,7 +236,7 @@
     }
 
     async function askGemini() {
-      alert("Feature coming soon! Ensure your Save/Load functions are working first.");
+      alert("Ask Feature coming soon! Ensure parsing and saving works first.");
     }
   </script>
 </body>
