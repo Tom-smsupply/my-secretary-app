@@ -3,82 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="logo-192.png">
-  <link rel="icon" href="logo-192.png">
   <title>My Secretary</title>
   <style>
-    body { 
-      font-family: 'Segoe UI', Roboto, sans-serif; 
-      padding: 20px; 
-      text-align: center; 
-      background: #f8f9fa; 
-      margin: 0; 
-    }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; padding: 20px; text-align: center; background: #f8f9fa; margin: 0; }
     .container { max-width: 500px; margin: auto; }
     h2 { color: #1a73e8; font-size: 28px; margin-top: 10px; }
-    .hint { 
-      font-size: 14px; 
-      color: #5f6368; 
-      margin-bottom: 20px; 
-      background: #e8f0fe; 
-      padding: 12px; 
-      border-radius: 8px; 
-      border: 1px solid #c2d7ff; 
-      text-align: left; 
-      line-height: 1.4; 
-    }
-    textarea { 
-      width: 100%; 
-      height: 200px; 
-      padding: 15px; 
-      border-radius: 12px; 
-      font-size: 18px; 
-      border: 2px solid #dadce0; 
-      box-sizing: border-box; 
-      margin-bottom: 10px; 
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); 
-    }
-    button { 
-      width: 100%; 
-      padding: 18px; 
-      background: #1a73e8; 
-      color: white; 
-      border: none; 
-      border-radius: 12px; 
-      font-weight: bold; 
-      font-size: 18px; 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-      cursor: pointer; 
-      transition: 0.2s; 
-      margin: 8px 0; 
-    }
-    button:active { 
-      background: #174ea6; 
-      transform: translateY(2px); 
-    }
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    #logs { 
-      margin-top: 20px; 
-      text-align: left; 
-      max-height: 300px; 
-      overflow-y: auto; 
-      background: white; 
-      padding: 10px; 
-      border: 1px solid #dadce0; 
-      border-radius: 8px; 
-      font-family: monospace;
-      font-size: 12px;
-    }
-    .status-tag {
-      font-size: 12px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      display: block;
-    }
+    .hint { font-size: 14px; color: #5f6368; margin-bottom: 20px; background: #e8f0fe; padding: 12px; border-radius: 8px; border: 1px solid #c2d7ff; text-align: left; line-height: 1.4; }
+    textarea { width: 100%; height: 200px; padding: 15px; border-radius: 12px; font-size: 18px; border: 2px solid #dadce0; box-sizing: border-box; margin-bottom: 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+    button { width: 100%; padding: 18px; background: #1a73e8; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: 0.2s; margin: 8px 0; }
+    button:active { background: #174ea6; transform: translateY(2px); }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #logs { margin-top: 20px; text-align: left; max-height: 300px; overflow-y: auto; background: white; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-family: monospace; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -93,7 +28,6 @@
     </div>
 
     <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
-    
     <textarea id="transcript" placeholder="Voice will appear here... (or type your note)"></textarea>
     
     <button id="parseBtn" onclick="parseWithGemini()">✨ Parse with Gemini</button>
@@ -110,45 +44,34 @@
 
   <script>
     // ────────────────────────────────────────────────
-    // CONFIG – MUST UPDATE THESE
-    const GAS_URL ="https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
-    const GEMINI_KEY =AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4; 
+    // CONFIG – REPLACED WITH YOUR KEYS (ADDED QUOTES)
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
+    const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
     const MODEL = "gemini-1.5-flash";
 
     let parsedData = null; 
 
-    // Helper to toggle buttons during API calls
     function setLoading(isLoading, btnId, originalText) {
       const btn = document.getElementById(btnId);
-      if (isLoading) {
-        btn.disabled = true;
-        btn.innerText = "Processing...";
-      } else {
-        btn.disabled = false;
-        btn.innerText = originalText;
-      }
+      btn.disabled = isLoading;
+      btn.innerText = isLoading ? "Processing..." : originalText;
     }
 
     function startVoice() {
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "en-US";
-      
       recognition.onstart = () => {
         document.getElementById('voiceBtn').innerText = "Listening...";
         document.getElementById('voiceBtn').style.background = "#ea4335";
       };
-
       recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        document.getElementById('transcript').value = text;
+        document.getElementById('transcript').value = event.results[0][0].transcript;
         parseWithGemini(); 
       };
-
       recognition.onend = () => {
         document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note";
         document.getElementById('voiceBtn').style.background = "#1a73e8";
       };
-
       recognition.start();
     }
 
@@ -158,38 +81,32 @@
 
       setLoading(true, 'parseBtn', '✨ Parse with Gemini');
 
-      const prompt = `Task: Extract data from the following note into JSON.
-      Required Format:
-      {
-        "customer": "Full Name or 'Unknown'",
-        "meetingTime": "e.g. 2:30 PM or empty string",
-        "followUpDay": "e.g. Friday or 'None'",
-        "cleanNote": "The main details without the trigger words"
-      }
-      Note: ${rawText}`;
+      const payload = {
+        contents: [{
+          parts: [{
+            text: `Extract data into JSON. Keys: "customer", "meetingTime", "followUpDay", "cleanNote". Note: ${rawText}`
+          }]
+        }],
+        generationConfig: {
+          response_mime_type: "application/json",
+          temperature: 0.1
+        }
+      };
 
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json();
-        
-        if (data.error) throw new Error(data.error.message);
+        if (!res.ok) throw new Error(data.error?.message || "API Error");
 
         const textResponse = data.candidates[0].content.parts[0].text;
-        
-        // Use Regex to find the JSON block in case Gemini adds conversational filler
-        const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Could not find JSON in AI response.");
+        parsedData = JSON.parse(textResponse);
 
-        parsedData = JSON.parse(jsonMatch[0]);
-
-        alert(`Ready to Save!\n👤 Customer: ${parsedData.customer}\n📅 Follow-up: ${parsedData.followUpDay}`);
+        alert(`Parsed Successfully!\n👤 Customer: ${parsedData.customer}\n📅 Follow-up: ${parsedData.followUpDay}`);
       } catch (err) {
         alert("Gemini Error: " + err.message);
         console.error(err);
@@ -200,7 +117,6 @@
 
     async function saveNote() {
       if (!parsedData) return alert("Please parse the note with Gemini first.");
-
       setLoading(true, 'saveBtn', '💾 SAVE LOG & CALENDAR');
 
       try {
@@ -234,7 +150,7 @@
     }
 
     async function askGemini() {
-      alert("Ask Gemini coming soon! Ensure your GAS 'getNotes' action is working first.");
+      alert("Feature coming soon! Ensure your Save/Load functions are working first.");
     }
   </script>
 </body>
