@@ -34,19 +34,23 @@
     const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
     
-    // BACK TO v1beta (where the model lives) but without the "responseMimeType" field
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+    // Using the 'latest' alias which is the most compatible across regions
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
 
     let parsedData = null; 
 
     function setLoading(id, isLoading, text) {
       const b = document.getElementById(id);
-      b.disabled = isLoading;
-      b.innerText = isLoading ? "Thinking..." : text;
+      if (b) {
+        b.disabled = isLoading;
+        b.innerText = isLoading ? "Thinking..." : text;
+      }
     }
 
     function startVoice() {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Speech) return alert("Use Chrome for voice support.");
+      const recognition = new Speech();
       recognition.onresult = (e) => {
         document.getElementById('transcript').value = e.results[0][0].transcript;
         parseWithGemini(); 
@@ -60,11 +64,10 @@
 
       setLoading('parseBtn', true, '');
 
-      // Prompting for JSON manually to avoid "Unknown Field" errors
       const payload = {
         contents: [{
           parts: [{
-            text: `Extract into JSON: {"customer": "", "meetingTime": "", "followUpDay": "", "cleanNote": ""}. Output only the JSON block. Note: ${text}`
+            text: `Extract into JSON: {"customer": "", "meetingTime": "", "followUpDay": "", "cleanNote": ""}. Output only the raw JSON. Note: ${text}`
           }]
         }]
       };
@@ -81,14 +84,15 @@
 
         const aiText = data.candidates[0].content.parts[0].text;
         
-        // Find JSON between {} even if there is markdown backticks
+        // Find JSON between {}
         const match = aiText.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("AI didn't return JSON.");
         
         parsedData = JSON.parse(match[0]);
-        alert(`Success!\nCustomer: ${parsedData.customer}`);
+        alert(`Parsed Successfully!\nCustomer: ${parsedData.customer}`);
       } catch (err) {
         alert("Error: " + err.message);
+        console.error(err);
       } finally {
         setLoading('parseBtn', false, '✨ Parse with Gemini');
       }
@@ -103,7 +107,7 @@
           mode: "no-cors", 
           body: JSON.stringify({ action: "addNote", ...parsedData })
         });
-        alert("Saved!");
+        alert("Saved successfully!");
         document.getElementById('transcript').value = '';
         parsedData = null;
       } catch (err) {
@@ -114,6 +118,7 @@
     }
 
     async function loadLogs() {
+      document.getElementById('logs').innerText = "Loading...";
       try {
         const res = await fetch(GAS_URL + "?action=getNotes");
         const text = await res.text();
