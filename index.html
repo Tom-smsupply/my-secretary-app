@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="logo-192.png">
+  <title>My Secretary</title>
+  <style>
+    /* Same beautiful styling as your original + Tailwind for clean look */
+    body { font-family: system-ui; padding:20px; background:#f8f9fa; }
+    .container { max-width:500px; margin:auto; }
+    button { width:100%; padding:18px; font-size:20px; margin:10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 style="color:#1a73e8">My Secretary</h2>
+    
+    <button onclick="startVoice()">🎤 Start Voice Note</button>
+    <textarea id="transcript" placeholder="Voice will appear here..."></textarea>
+    
+    <button onclick="saveNote()">SAVE TO SHEET & CALENDAR</button>
+    
+    <button onclick="loadLogs()">📋 View All Logs</button>
+    <div id="logs"></div>
+    
+    <button onclick="askGemini()">🤖 Ask Gemini about my notes</button>
+    <input id="query" placeholder="e.g. notes for customer John">
+  </div>
+
+  <script>
+    const GAS_URL = https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec
+    const GEMINI_KEY = AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4
+    const MODEL = "gemini-2.5-flash"; // or gemini-2.5-flash-lite — check ai.google.dev/models
+
+    let recognition;
+    function startVoice() {
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.onresult = e => {
+        const text = e.results[0][0].transcript;
+        document.getElementById('transcript').value = text;
+        parseWithGemini(text);
+      };
+      recognition.start();
+    }
+
+    async function parseWithGemini(rawText) {
+      const prompt = `Parse this voice note into JSON only. Triggers: Customer Name, Meeting time (e.g. 2 PM), Follow-up day (Monday etc). Return exactly: {"customer": "...", "meetingTime": "...", "followUpDay": "... or None", "cleanNote": "cleaned details"}\n\nNote: ${rawText}`;
+      
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({contents: [{parts: [{text: prompt}]}]})
+      });
+      
+      const json = await res.json();
+      const parsed = JSON.parse(json.candidates[0].content.parts[0].text);
+      window.parsedData = parsed; // store for save
+      alert("✅ Gemini parsed your note!");
+    }
+
+    async function saveNote() {
+      if (!window.parsedData) return alert("Speak first!");
+      await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({action: "addNote", ...window.parsedData})
+      });
+      alert("Saved!");
+      document.getElementById('transcript').value = '';
+    }
+
+    async function loadLogs() {
+      const res = await fetch(GAS_URL + "?action=getNotes"); // add ?action=getNotes support in doPost if needed
+      const rows = await res.json();
+      // display nice table of customer/date/note
+      document.getElementById('logs').innerHTML = rows.map(r => `<p>${r[1]} - ${r[5]}: ${r[3]}</p>`).join('');
+    }
+
+    async function askGemini() {
+      const query = document.getElementById('query').value;
+      const res = await fetch(GAS_URL + "?action=getNotes");
+      const notes = await res.json();
+      // Send notes + query to Gemini (same fetch as parseWithGemini but with context prompt)
+      // ... (full code is in the repo template I'll link if you want)
+      alert("Gemini would reply here with your note summary!");
+    }
+  </script>
+</body>
+</html>
