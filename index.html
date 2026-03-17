@@ -2,42 +2,207 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="logo-192.png">
+  <link rel="icon" href="logo-192.png">
   <title>My Secretary</title>
   <style>
-    body { font-family: system-ui, sans-serif; padding: 20px; background: #f8f9fa; text-align: center; }
+    body { 
+      font-family: 'Segoe UI', Roboto, sans-serif; 
+      padding: 20px; 
+      text-align: center; 
+      background: #f8f9fa; 
+      margin: 0; 
+    }
     .container { max-width: 500px; margin: auto; }
-    h2 { color: #1a73e8; }
-    button { width: 100%; padding: 18px; font-size: 18px; margin: 10px 0; background: #1a73e8; color: white; border: none; border-radius: 8px; }
-    textarea { width: 100%; height: 150px; padding: 15px; font-size: 16px; border: 2px solid #dadce0; border-radius: 8px; }
+    h2 { color: #1a73e8; font-size: 28px; margin-top: 10px; }
+    .hint { 
+      font-size: 14px; 
+      color: #5f6368; 
+      margin-bottom: 20px; 
+      background: #e8f0fe; 
+      padding: 12px; 
+      border-radius: 8px; 
+      border: 1px solid #c2d7ff; 
+      text-align: left; 
+      line-height: 1.4; 
+    }
+    textarea { 
+      width: 100%; 
+      height: 220px; 
+      padding: 15px; 
+      border-radius: 12px; 
+      font-size: 18px; 
+      border: 2px solid #dadce0; 
+      box-sizing: border-box; 
+      margin-bottom: 20px; 
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); 
+    }
+    button { 
+      width: 100%; 
+      padding: 18px; 
+      background: #1a73e8; 
+      color: white; 
+      border: none; 
+      border-radius: 12px; 
+      font-weight: bold; 
+      font-size: 18px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+      cursor: pointer; 
+      transition: 0.2s; 
+      margin: 8px 0; 
+    }
+    button:active { 
+      background: #174ea6; 
+      transform: translateY(2px); 
+    }
+    #logs { 
+      margin-top: 20px; 
+      text-align: left; 
+      max-height: 300px; 
+      overflow-y: auto; 
+      background: white; 
+      padding: 10px; 
+      border: 1px solid #dadce0; 
+      border-radius: 8px; 
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>My Secretary</h2>
-    <p>Test page - if you see this, HTML is loading.</p>
+    
+    <div class="hint">
+      <b>Triggers examples:</b><br>
+      • Customer John Smith<br>
+      • Meeting 2 PM<br>
+      • Follow up Friday<br>
+      Speak naturally or type for testing.
+    </div>
 
     <button onclick="startVoice()">🎤 Start Voice Note</button>
-    <textarea id="transcript" placeholder="Voice will appear here... (or type for test)"></textarea>
-    <button onclick="saveNote()">SAVE TO SHEET & CALENDAR</button>
-    <button onclick="testClick()">Test Click (should alert)</button>
+    
+    <textarea id="transcript" placeholder="Voice will appear here... (or type your note)"></textarea>
+    
+    <button onclick="parseWithGemini(document.getElementById('transcript').value)">Parse with Gemini</button>
+    <button onclick="saveNote()">SAVE LOG & CALENDAR</button>
+    
+    <button onclick="loadLogs()">📋 View Recent Logs</button>
+    <div id="logs"></div>
+    
+    <button onclick="askGemini()">🤖 Ask Gemini about my notes</button>
+    <input id="query" placeholder="e.g. What notes for customer John?" style="width:100%; padding:12px; font-size:16px; margin:10px 0; border:2px solid #dadce0; border-radius:8px;">
   </div>
 
   <script>
-    alert("JavaScript is running! If you see this popup, JS works.");
+    // ────────────────────────────────────────────────
+    // CONFIG – PASTE YOUR VALUES HERE
+    const GAS_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_ID_HERE/exec";  // ← Replace with your actual GAS web app URL
+    const GEMINI_KEY = "AIzaSyYOUR_GEMINI_API_KEY_HERE";  // ← Replace with your real key
+    const MODEL = "gemini-1.5-flash";  // or gemini-1.5-pro if you have access
 
-    function testClick() {
-      alert("Test button works!");
-    }
+    let parsedData = null;  // Stores Gemini-parsed result
+
+    // Test: Confirm JS is alive
+    alert("JavaScript is running! Buttons should now work.");
 
     function startVoice() {
-      alert("Voice button clicked! (Mic would start if supported)");
+      if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+        alert("Voice recognition not supported in this browser. Type instead.");
+        return;
+      }
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        document.getElementById('transcript').value = text;
+        parseWithGemini(text);  // Auto-parse after speaking
+      };
+
+      recognition.onerror = (event) => {
+        alert("Voice error: " + event.error);
+      };
+
+      recognition.start();
     }
 
-    function saveNote() {
-      alert("Save button clicked!");
+    async function parseWithGemini(rawText) {
+      if (!rawText.trim()) return alert("Enter or speak a note first.");
+
+      const prompt = `Parse this voice/customer note into strict JSON only. No extra text. Use these keys:
+      {
+        "customer": "full name or Unknown",
+        "meetingTime": "e.g. 2:30 PM or empty string",
+        "followUpDay": "e.g. Friday or None",
+        "cleanNote": "cleaned details without triggers"
+      }
+      Note: ${rawText}`;
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
+
+        const json = await res.json();
+        const textResponse = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+        // Gemini often wraps in ```json ... ```
+        const cleaned = textResponse.replace(/```json|```/g, '').trim();
+        parsedData = JSON.parse(cleaned);
+
+        alert(`Parsed successfully!\nCustomer: ${parsedData.customer}\nFollow-up: ${parsedData.followUpDay}`);
+      } catch (err) {
+        alert("Gemini parse failed: " + err.message + "\nCheck API key or network.");
+        console.error(err);
+      }
+    }
+
+    async function saveNote() {
+      if (!parsedData) return alert("Parse a note first (voice or click Parse button).");
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          mode: "no-cors",  // Helps with GAS CORS quirks; response text limited
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "addNote", ...parsedData })
+        });
+
+        // no-cors → can't read response text reliably, so assume success unless network error
+        alert("Save attempted! Check your Google Sheet & Calendar.");
+        document.getElementById('transcript').value = '';
+        parsedData = null;
+      } catch (err) {
+        alert("Save failed: " + err.message + "\nCheck GAS URL / deployment settings.");
+      }
+    }
+
+    async function loadLogs() {
+      try {
+        const res = await fetch(GAS_URL + "?action=getNotes");
+        const text = await res.text();
+        document.getElementById('logs').innerHTML = "<pre>" + text.replace(/\n/g, '<br>') + "</pre>";
+      } catch (err) {
+        alert("Load logs failed: " + err.message);
+      }
+    }
+
+    async function askGemini() {
+      const query = document.getElementById('query').value.trim();
+      if (!query) return alert("Enter a question first.");
+
+      alert("Ask feature: Coming soon – for now, check logs or ask in Gemini app directly.");
+      // Future: fetch logs → send to Gemini with query → show answer
     }
   </script>
 </body>
