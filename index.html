@@ -104,18 +104,16 @@
 
   <script>
     // ────────────────────────────────────────────────
-    // 1. CONFIGURATION (Defined at the top level)
-    const MODEL = "gemini-1.5-flash";
+    // 1. CONFIGURATION (Updated to Stable v1 API)
+    const MODEL_ID = "gemini-1.5-flash"; 
     const GEMINI_KEY = "AIzaSyCB_N8LmT4ewtStiEQ4hIZcQwILUpL9mc4"; 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzYCJBduzgvMcWmF0TkVlFNf30RMPSQb_PGBDb3x2ZF_lPdR_XkoJhuprV5oeB1BtLC/exec"; 
 
+    // This is the stable production endpoint
+    const API_URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL_ID}:generateContent?key=${GEMINI_KEY}`;
+
     let parsedData = null; 
 
-    // Confirm loading in Console
-    console.log("App initialized with Model:", MODEL);
-
-    // ────────────────────────────────────────────────
-    // 2. HELPER FUNCTIONS
     function setLoading(isLoading, btnId, originalText) {
       const btn = document.getElementById(btnId);
       if (!btn) return;
@@ -123,14 +121,9 @@
       btn.innerText = isLoading ? "Processing..." : originalText;
     }
 
-    // ────────────────────────────────────────────────
-    // 3. CORE LOGIC
     function startVoice() {
       const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Speech) {
-        alert("Voice recognition not supported in this browser. Try Chrome or Safari.");
-        return;
-      }
+      if (!Speech) return alert("Voice recognition not supported. Please use Chrome.");
       
       const recognition = new Speech();
       recognition.lang = "en-US";
@@ -162,11 +155,10 @@
 
       setLoading(true, 'parseBtn', '✨ Parse with Gemini');
 
-      // Constructing the API Request Body
       const payload = {
         contents: [{
           parts: [{
-            text: `Extract data into JSON format with keys: "customer", "meetingTime", "followUpDay", "cleanNote". Note: ${rawText}`
+            text: `Return ONLY a JSON object with these keys: "customer", "meetingTime", "followUpDay", "cleanNote". Input text: ${rawText}`
           }]
         }],
         generationConfig: {
@@ -176,7 +168,7 @@
       };
 
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`, {
+        const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -184,27 +176,28 @@
 
         const data = await res.json();
         
-        if (!res.ok) throw new Error(data.error?.message || "Gemini API Error");
+        if (!res.ok) {
+          throw new Error(data.error?.message || "API Error");
+        }
 
         const textResponse = data.candidates[0].content.parts[0].text;
         parsedData = JSON.parse(textResponse);
 
-        alert(`AI Parsed Successfully!\n👤 Customer: ${parsedData.customer}\n📅 Time: ${parsedData.meetingTime}`);
+        alert(`Ready to save!\n👤 Customer: ${parsedData.customer}\n📅 Time: ${parsedData.meetingTime}`);
       } catch (err) {
         alert("Gemini Error: " + err.message);
-        console.error("Full Error:", err);
+        console.error("Debug info:", err);
       } finally {
         setLoading(false, 'parseBtn', '✨ Parse with Gemini');
       }
     }
 
     async function saveNote() {
-      if (!parsedData) return alert("Please parse the note with Gemini first.");
+      if (!parsedData) return alert("Parse with Gemini first.");
 
       setLoading(true, 'saveBtn', '💾 SAVE LOG & CALENDAR');
 
       try {
-        // mode: "no-cors" is used because Google Apps Script doesn't always send CORS headers
         await fetch(GAS_URL, {
           method: "POST",
           mode: "no-cors", 
@@ -212,12 +205,11 @@
           body: JSON.stringify({ action: "addNote", ...parsedData })
         });
 
-        alert("Success! Sent to Google Sheets/Calendar.");
+        alert("Success! Sent to Google.");
         document.getElementById('transcript').value = '';
         parsedData = null;
       } catch (err) {
         alert("Save failed: " + err.message);
-        console.error("Save error:", err);
       } finally {
         setLoading(false, 'saveBtn', '💾 SAVE LOG & CALENDAR');
       }
@@ -225,18 +217,18 @@
 
     async function loadLogs() {
       const logDiv = document.getElementById('logs');
-      logDiv.innerHTML = "Loading logs...";
+      logDiv.innerHTML = "Fetching...";
       try {
         const res = await fetch(GAS_URL + "?action=getNotes");
         const text = await res.text();
         logDiv.innerHTML = text ? text.replace(/\n/g, '<br>') : "No logs found.";
       } catch (err) {
-        logDiv.innerHTML = "Error loading logs: " + err.message;
+        logDiv.innerHTML = "Could not load logs.";
       }
     }
 
     async function askGemini() {
-      alert("Ask Feature coming soon! Ensure parsing and saving works first.");
+      alert("Feature coming soon!");
     }
   </script>
 </body>
