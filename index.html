@@ -7,7 +7,6 @@
 
   <title>My Secretary - AI Powered</title>
 
-  <!-- PWA / ICON -->
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="logo-192.png">
   <meta name="theme-color" content="#1a73e8">
@@ -28,7 +27,7 @@
     }
 
     header img {
-      width: 55px;
+      width: 110px; /* 2x bigger */
       border-radius: 12px;
       margin-bottom: 5px;
     }
@@ -123,6 +122,9 @@
 
     <textarea id="note" placeholder="Enter your note..."></textarea>
 
+    <!-- NEW VOICE BUTTON -->
+    <button onclick="startVoice()">🎤 Start Voice Note</button>
+
     <button onclick="saveNote()">Save Note</button>
 
     <button class="secondary"
@@ -151,7 +153,7 @@
       statusEl.textContent = 'Processing...';
 
       try {
-        // 1) Parse note
+        // 1) Parse
         const parseRes = await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
@@ -161,13 +163,8 @@
 
         const parsed = await parseRes.json();
 
-        if (parsed.error) {
-          statusEl.textContent = 'Error: ' + parsed.error;
-          return;
-        }
-
         // 2) Save to sheet
-        const saveRes = await fetch(WEB_APP_URL, {
+        await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -181,15 +178,8 @@
           })
         });
 
-        const saved = await saveRes.json();
-
-        if (saved.error) {
-          statusEl.textContent = 'Sheet error: ' + saved.error;
-          return;
-        }
-
-        // 3) Create calendar event
-        const calRes = await fetch(WEB_APP_URL, {
+        // 3) Calendar (NOW PASSES ORIGINAL TEXT)
+        await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -198,16 +188,10 @@
             customer: parsed.customer,
             meetingTime: parsed.meetingTime,
             followUpDay: parsed.followUpDay,
-            cleanNote: parsed.cleanNote
+            cleanNote: parsed.cleanNote,
+            originalText: text
           })
         });
-
-        const cal = await calRes.json();
-
-        if (cal.error) {
-          statusEl.textContent = 'Calendar error: ' + cal.error;
-          return;
-        }
 
         noteEl.value = '';
         statusEl.textContent = 'Saved ✔';
@@ -216,6 +200,31 @@
         console.error(err);
         statusEl.textContent = 'Network or server error.';
       }
+    }
+
+    // VOICE INPUT
+    function startVoice() {
+      const statusEl = document.getElementById('status');
+      const noteEl = document.getElementById('note');
+
+      if (!('webkitSpeechRecognition' in window)) {
+        statusEl.textContent = 'Voice not supported.';
+        return;
+      }
+
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        statusEl.textContent = 'Listening... 🎤';
+      };
+
+      recognition.onresult = (event) => {
+        noteEl.value = event.results[0][0].transcript;
+        statusEl.textContent = 'Captured ✔';
+      };
+
+      recognition.start();
     }
   </script>
 
