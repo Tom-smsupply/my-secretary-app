@@ -153,11 +153,13 @@
 
       try {
         // 1) Parse note (customer, date, summary)
-        const parseRes = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'parse', text })
-        });
+        // Replace your fetch blocks with this structure:
+const parseRes = await fetch(WEB_APP_URL, {
+  method: 'POST',
+  mode: 'cors', // Ensure cors is explicit
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Use text/plain to avoid CORS preflight
+  body: JSON.stringify({ action: 'parse', text })
+});
         const parsed = await parseRes.json();
 
         if (parsed.error) {
