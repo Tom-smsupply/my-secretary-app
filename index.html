@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <title>My Secretary - AI Powered</title>
 
@@ -124,7 +125,8 @@
 
     <button onclick="saveNote()">Save Note</button>
 
-    <button class="secondary" onclick="window.open('https://calendar.google.com/calendar/u/0/r', '_blank')">
+    <button class="secondary"
+            onclick="window.open('https://calendar.google.com/calendar/u/0/r', '_blank')">
       Open Calendar
     </button>
 
@@ -133,65 +135,79 @@
   </div>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw-ZpxCoHEyZfK9r55cwcnufPzBk0YJVYhnxMnPPALbKYV1Uz6IwJHVs-SsA1svvG3j/exec";
+    // Your deployed Apps Script web app URL
+    const WEB_APP_URL =
+      'https://script.google.com/macros/s/AKfycbw-ZpxCoHEyZfK9r55cwcnufPzBk0YJVYhnxMnPPALbKYV1Uz6IwJHVs-SsA1svvG3j/exec';
 
     async function saveNote() {
-      const note = document.getElementById("note").value.trim();
-      const status = document.getElementById("status");
+      const noteEl = document.getElementById('note');
+      const statusEl = document.getElementById('status');
+      const text = noteEl.value.trim();
 
-      if (!note) {
-        status.textContent = "Please enter a note first.";
+      if (!text) {
+        statusEl.textContent = 'Please enter a note first.';
         return;
       }
 
-      status.textContent = "Processing...";
+      statusEl.textContent = 'Processing...';
 
       try {
-        // Step 1: Parse
-        const parsed = await fetch(WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "parse", text: note })
-        }).then(r => r.json());
+        // 1) Parse note (customer, date, summary)
+        const parseRes = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'parse', text })
+        });
+        const parsed = await parseRes.json();
 
         if (parsed.error) {
-          status.textContent = "Error: " + parsed.error;
+          statusEl.textContent = 'Error: ' + parsed.error;
           return;
         }
 
-        // Step 2: Save to sheet
-        await fetch(WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        // 2) Save to sheet
+        const saveRes = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: "addNote",
+            action: 'addNote',
             customer: parsed.customer,
             meetingTime: parsed.meetingTime,
             followUpDay: parsed.followUpDay,
             cleanNote: parsed.cleanNote,
-            type: "Note"
+            type: 'Note'
           })
         });
+        const saved = await saveRes.json();
+        if (saved.error) {
+          statusEl.textContent = 'Sheet error: ' + saved.error;
+          return;
+        }
 
-        // Step 3: Calendar event
-        await fetch(WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        // 3) Create calendar event
+        const calRes = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: "addCalendar",
+            action: 'addCalendar',
             customer: parsed.customer,
             meetingTime: parsed.meetingTime,
             followUpDay: parsed.followUpDay,
             cleanNote: parsed.cleanNote
           })
         });
+        const cal = await calRes.json();
+        if (cal.error) {
+          statusEl.textContent = 'Calendar error: ' + cal.error;
+          return;
+        }
 
-        document.getElementById("note").value = "";
-        status.textContent = "Saved ✔";
+        noteEl.value = '';
+        statusEl.textContent = 'Saved ✔';
 
       } catch (err) {
         console.error(err);
-        status.textContent = "Network or server error.";
+        statusEl.textContent = 'Network or server error.';
       }
     }
   </script>
