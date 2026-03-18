@@ -2,81 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
   <title>My Secretary - AI Powered</title>
+
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="logo-192.png">
   <meta name="theme-color" content="#1a73e8">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  <style>
     body {
       font-family: 'Segoe UI', Roboto, sans-serif;
+      padding: 0;
+      margin: 0;
       background: #f8f9fa;
-      display: flex;
-      flex-direction: column;
-      height: 100dvh;
-      overflow: hidden;
+      text-align: center;
     }
 
     header {
       background: #ffffff;
-      padding: 12px 0 8px 0;
+      padding: 20px 0 10px 0;
       border-bottom: 1px solid #e0e0e0;
-      text-align: center;
-      flex-shrink: 0;
     }
 
     header img {
-      width: 60px;
-      border-radius: 10px;
-      margin-bottom: 4px;
+      width: 110px;
+      border-radius: 12px;
+      margin-bottom: 5px;
     }
 
     header h2 {
       color: #1a73e8;
-      font-size: 20px;
+      font-size: 26px;
+      margin: 0;
       font-weight: 600;
     }
 
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 12px;
-      gap: 10px;
-      overflow: hidden;
-    }
-
     textarea {
-      flex: 1;
       width: 100%;
-      padding: 12px;
+      height: 200px;
+      padding: 15px;
       border-radius: 12px;
-      font-size: 17px;
+      font-size: 18px;
       border: 2px solid #dadce0;
-      resize: none;
+      box-sizing: border-box;
+      margin-bottom: 10px;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      flex-shrink: 0;
     }
 
     button {
       width: 100%;
-      padding: 15px;
+      padding: 18px;
       background: #1a73e8;
       color: white;
       border: none;
       border-radius: 12px;
       font-weight: bold;
-      font-size: 17px;
+      font-size: 18px;
       cursor: pointer;
       transition: 0.2s;
+      margin: 8px 0;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
@@ -94,12 +80,10 @@
     }
 
     #status {
-      text-align: center;
+      margin-top: 15px;
       font-weight: bold;
       color: #1a73e8;
-      min-height: 20px;
-      font-size: 15px;
-      flex-shrink: 0;
+      min-height: 24px;
     }
   </style>
 </head>
@@ -111,16 +95,18 @@
     <h2>My Secretary</h2>
   </header>
 
-  <div class="main">
+  <div style="padding: 20px;">
+
     <textarea id="note" placeholder="Enter your note..."></textarea>
+
+    <button onclick="startVoice()">🎤 Start Voice Note</button>
+
+    <button onclick="saveNote()">Save Note</button>
+
+    <button class="secondary" onclick="openCalendarApp()">Open Calendar</button>
 
     <div id="status"></div>
 
-    <div class="buttons">
-      <button onclick="startVoice()">🎤 Start Voice Note</button>
-      <button onclick="saveNote()">Save Note</button>
-      <button class="secondary" onclick="openCalendarApp()">Open Calendar</button>
-    </div>
   </div>
 
   <script>
@@ -152,7 +138,6 @@
       statusEl.textContent = 'Processing...';
 
       try {
-        // 1) Parse
         const parseRes = await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
@@ -162,7 +147,6 @@
 
         const parsed = await parseRes.json();
 
-        // 2) Save to sheet
         await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
@@ -178,7 +162,6 @@
           })
         });
 
-        // 3) Calendar
         await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
@@ -213,16 +196,13 @@
 
       const recognition = new webkitSpeechRecognition();
       recognition.lang = 'en-US';
-
       recognition.onstart = () => {
         statusEl.textContent = 'Listening... 🎤';
       };
-
       recognition.onresult = (event) => {
         noteEl.value = event.results[0][0].transcript;
         statusEl.textContent = 'Captured ✔';
       };
-
       recognition.start();
     }
   </script>
