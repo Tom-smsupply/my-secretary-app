@@ -34,7 +34,6 @@
 
   <script>
     // --- CONFIG ---
-    // PASTE YOUR LATEST GOOGLE DEPLOYMENT URL HERE
     const GAS_URL ="https://script.google.com/macros/s/AKfycbyEBW3xHb77p_xau4A3pDgBP-j0i0BDCA-MOT2lHGfUBacwNry3iJuYQcIgxsCA8UI/exec";
 
     function setStatus(msg) {
@@ -84,33 +83,40 @@
         
         if (parsed.error) throw new Error(parsed.error);
 
-        // Smart mapping to prevent "undefined" errors
+        // Smart mapping to prevent undefined values
         const aiData = {
           customer: parsed.customer || parsed.Customer || "Unknown",
-          meetingTime: parsed.meetingTime || parsed.MeetingTime || "N/A",
-          followUpDay: parsed.followUpDay || parsed.FollowUpDay || "None",
-          cleanNote: parsed.cleanNote || parsed.CleanNote || text
+          type: parsed.type || "N/A",
+          meetingTime: parsed.meetingTime || null,
+          followUpDay: parsed.followUpDay || null,
+          cleanNote: parsed.cleanNote || text
         };
 
-        setStatus(`📝 Found: ${aiData.customer}. Saving to Google...`);
+        setStatus(`📝 Saving note for: ${aiData.customer}`);
 
         // STEP 2: SAVE TO SHEET
-        const saveRes = await fetch(GAS_URL, {
+        await fetch(GAS_URL, {
           method: "POST",
           body: JSON.stringify({ action: "addNote", ...aiData })
         });
 
-        const saveResult = await saveRes.json();
-        
-        setStatus("✅ Successfully Logged!");
+        setStatus("✅ Saved to Google Sheets!");
+
+        // STEP 3: Calendar (only if meeting)
+        if (aiData.cleanNote.toLowerCase().includes("meeting")) {
+          await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "addCalendar", ...aiData })
+          });
+          setStatus("📅 Calendar updated!");
+        }
+
         document.getElementById('transcript').value = "";
-        
         setTimeout(() => setStatus(""), 5000);
 
       } catch (err) {
         console.error(err);
         setStatus("❌ Error: " + err.message);
-        alert("Make sure your Google Script Deployment is set to 'Anyone' and you have clicked 'Allow' in the editor.");
       } finally {
         btn.disabled = false;
       }
