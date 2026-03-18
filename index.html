@@ -2,85 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>My Secretary - AI Powered</title>
-
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="logo-192.png">
   <meta name="theme-color" content="#1a73e8">
-
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: 'Segoe UI', Roboto, sans-serif;
-      padding: 0;
-      margin: 0;
       background: #f8f9fa;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
     }
 
     header {
       background: #ffffff;
-      padding: 20px 0 10px 0;
+      padding: 12px 0 8px 0;
       border-bottom: 1px solid #e0e0e0;
+      text-align: center;
+      flex-shrink: 0;
     }
 
     header img {
-      width: 110px; /* 2x bigger */
-      border-radius: 12px;
-      margin-bottom: 5px;
+      width: 60px;
+      border-radius: 10px;
+      margin-bottom: 4px;
     }
 
     header h2 {
       color: #1a73e8;
-      font-size: 26px;
-      margin: 0;
+      font-size: 20px;
       font-weight: 600;
     }
 
- //   .container {
-    //  max-width: 500px;
-    //  margin: auto;
-    //  padding: 20px;
-  //  }
-
-    //.hint {
-     // font-size: 14px;
-     // color: #5f6368;
-     // margin-bottom: 20px;
-    //  background: #e8f0fe;
-     // padding: 12px;
-     // border-radius: 8px;
-     // border: 1px solid #c2d7ff;
-     // text-align: left;
-    //  line-height: 1.4;
-  //  }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 10px;
+      overflow: hidden;
+    }
 
     textarea {
+      flex: 1;
       width: 100%;
-      height: 200px;
-      padding: 15px;
+      padding: 12px;
       border-radius: 12px;
-      font-size: 18px;
+      font-size: 17px;
       border: 2px solid #dadce0;
-      box-sizing: border-box;
-      margin-bottom: 10px;
+      resize: none;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     button {
       width: 100%;
-      padding: 18px;
+      padding: 15px;
       background: #1a73e8;
       color: white;
       border: none;
       border-radius: 12px;
       font-weight: bold;
-      font-size: 18px;
+      font-size: 17px;
       cursor: pointer;
       transition: 0.2s;
-      margin: 8px 0;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
@@ -98,10 +94,12 @@
     }
 
     #status {
-      margin-top: 15px;
+      text-align: center;
       font-weight: bold;
       color: #1a73e8;
-      min-height: 24px;
+      min-height: 20px;
+      font-size: 15px;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -113,52 +111,33 @@
     <h2>My Secretary</h2>
   </header>
 
- // <div class="container">
-
-   // <div class="hint">
-    //  Type your note naturally. Example:<br>
-   //   <i>“customer tom smith wants samples at the meeting on monday at 2 pm”</i>
-  //  </div>
-
+  <div class="main">
     <textarea id="note" placeholder="Enter your note..."></textarea>
-
-    <!-- NEW VOICE BUTTON -->
-    <button onclick="startVoice()">🎤 Start Voice Note</button>
-
-    <button onclick="saveNote()">Save Note</button>
-
- <button class="secondary" onclick="openCalendarApp()">
-  Open Calendar
-</button>
-
-  
-
 
     <div id="status"></div>
 
+    <div class="buttons">
+      <button onclick="startVoice()">🎤 Start Voice Note</button>
+      <button onclick="saveNote()">Save Note</button>
+      <button class="secondary" onclick="openCalendarApp()">Open Calendar</button>
+    </div>
   </div>
 
   <script>
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbyegkIy2-DoPMil8kvr8dyRJBNNMMS0Jsio9oev4NccCUPZVlA6e6Bb4xeFW2lef-ks/exec';
-function openCalendarApp() {
-  const ua = navigator.userAgent.toLowerCase();
 
-  if (ua.includes("android")) {
-    // Android → Google Calendar app
-    window.location = "com.google.android.calendar://";
-  } else if (ua.includes("iphone") || ua.includes("ipad")) {
-    // iOS → Apple Calendar app
-    window.location = "calshow:";
-  }
-
-  // Fallback to web after 300ms
-  setTimeout(() => {
-    window.location = "https://calendar.google.com/calendar/u/0/r";
-  }, 300);
-}
-
-
+    function openCalendarApp() {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes("android")) {
+        window.location = "com.google.android.calendar://";
+      } else if (ua.includes("iphone") || ua.includes("ipad")) {
+        window.location = "calshow:";
+      }
+      setTimeout(() => {
+        window.location = "https://calendar.google.com/calendar/u/0/r";
+      }, 300);
+    }
 
     async function saveNote() {
       const noteEl = document.getElementById('note');
@@ -184,23 +163,22 @@ function openCalendarApp() {
         const parsed = await parseRes.json();
 
         // 2) Save to sheet
-await fetch(WEB_APP_URL, {
-  method: 'POST',
-  mode: 'cors',
-  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-  body: JSON.stringify({
-    action: 'addNote',
-    customer: parsed.customer,
-    meetingTime: parsed.meetingTime,
-    followUpDay: parsed.followUpDay,
-    cleanNote: parsed.cleanNote,
-    type: parsed.type,          // ← FIXED
-    originalText: text          // ← FIXED
-  })
-});
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'addNote',
+            customer: parsed.customer,
+            meetingTime: parsed.meetingTime,
+            followUpDay: parsed.followUpDay,
+            cleanNote: parsed.cleanNote,
+            type: parsed.type,
+            originalText: text
+          })
+        });
 
-
-        // 3) Calendar (NOW PASSES ORIGINAL TEXT)
+        // 3) Calendar
         await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
@@ -224,7 +202,6 @@ await fetch(WEB_APP_URL, {
       }
     }
 
-    // VOICE INPUT
     function startVoice() {
       const statusEl = document.getElementById('status');
       const noteEl = document.getElementById('note');
