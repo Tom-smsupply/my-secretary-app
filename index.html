@@ -130,13 +130,7 @@
    <button class="secondary" onclick="openCalendarApp()">
   Open Calendar
 </button>
-function openCalendarApp() {
-  const calendarId = "tom@smsupply.ca"; // e.g. summitmetalsupply@gmail.com
-  const url = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(calendarId);
-
-  // Opens the app if installed, otherwise opens the web version
-  window.location.href = url;
-}
+  
 
 
     <div id="status"></div>
@@ -146,7 +140,13 @@ function openCalendarApp() {
   <script>
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbyegkIy2-DoPMil8kvr8dyRJBNNMMS0Jsio9oev4NccCUPZVlA6e6Bb4xeFW2lef-ks/exec';
+function openCalendarApp() {
+  const calendarId = "tom@smsupply.ca"; // e.g. summitmetalsupply@gmail.com
+  const url = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(calendarId);
 
+  // Opens the app if installed, otherwise opens the web version
+  window.location.href = url;
+}
     async function saveNote() {
       const noteEl = document.getElementById('note');
       const statusEl = document.getElementById('status');
