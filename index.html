@@ -133,62 +133,52 @@
   </div>
 
   <script>
-    // TODO: put your deployed Apps Script web app URL here
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw-ZpxCoHEyZfK9r55cwcnufPzBk0YJVYhnxMnPPALbKYV1Uz6IwJHVs-SsA1svvG3j/exec';
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw-ZpxCoHEyZfK9r55cwcnufPzBk0YJVYhnxMnPPALbKYV1Uz6IwJHVs-SsA1svvG3j/exec";
 
     async function saveNote() {
-      const noteEl = document.getElementById('note');
-      const statusEl = document.getElementById('status');
-      const text = noteEl.value.trim();
+      const note = document.getElementById("note").value.trim();
+      const status = document.getElementById("status");
 
-      if (!text) {
-        statusEl.textContent = 'Please enter a note first.';
+      if (!note) {
+        status.textContent = "Please enter a note first.";
         return;
       }
 
-      statusEl.textContent = 'Processing...';
+      status.textContent = "Processing...";
 
       try {
-        // 1) Ask Apps Script to parse the note (customer, date, summary)
-        const parseRes = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'parse', text })
-        });
-
-        const parsed = await parseRes.json();
+        // Step 1: Parse
+        const parsed = await fetch(WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "parse", text: note })
+        }).then(r => r.json());
 
         if (parsed.error) {
-          statusEl.textContent = 'Error: ' + parsed.error;
+          status.textContent = "Error: " + parsed.error;
           return;
         }
 
-        // 2) Save to sheet
-        const saveRes = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        // Step 2: Save to sheet
+        await fetch(WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: 'addNote',
+            action: "addNote",
             customer: parsed.customer,
             meetingTime: parsed.meetingTime,
             followUpDay: parsed.followUpDay,
             cleanNote: parsed.cleanNote,
-            type: 'Note'
+            type: "Note"
           })
         });
 
-        const saved = await saveRes.json();
-        if (saved.error) {
-          statusEl.textContent = 'Sheet error: ' + saved.error;
-          return;
-        }
-
-        // 3) Create calendar event (if applicable)
-        const calRes = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        // Step 3: Calendar event
+        await fetch(WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: 'addCalendar',
+            action: "addCalendar",
             customer: parsed.customer,
             meetingTime: parsed.meetingTime,
             followUpDay: parsed.followUpDay,
@@ -196,19 +186,12 @@
           })
         });
 
-        const cal = await calRes.json();
-        if (cal.error) {
-          statusEl.textContent = 'Calendar error: ' + cal.error;
-          return;
-        }
-
-        // Success
-        noteEl.value = '';
-        statusEl.textContent = 'Saved ✔';
+        document.getElementById("note").value = "";
+        status.textContent = "Saved ✔";
 
       } catch (err) {
-        statusEl.textContent = 'Network or server error.';
         console.error(err);
+        status.textContent = "Network or server error.";
       }
     }
   </script>
