@@ -142,14 +142,22 @@
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbyegkIy2-DoPMil8kvr8dyRJBNNMMS0Jsio9oev4NccCUPZVlA6e6Bb4xeFW2lef-ks/exec';
 function openCalendarApp() {
-  // Try to open the Google Calendar app
-  window.location = "googlecalendar://";
+  const ua = navigator.userAgent.toLowerCase();
 
-  // Fallback to the web version after 300ms
+  if (ua.includes("android")) {
+    // Android → Google Calendar app
+    window.location = "com.google.android.calendar://";
+  } else if (ua.includes("iphone") || ua.includes("ipad")) {
+    // iOS → Apple Calendar app
+    window.location = "calshow:";
+  }
+
+  // Fallback to web after 300ms
   setTimeout(() => {
     window.location = "https://calendar.google.com/calendar/u/0/r";
   }, 300);
 }
+
 
 
     async function saveNote() {
