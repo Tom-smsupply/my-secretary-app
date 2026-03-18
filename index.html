@@ -1,48 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Secretary Debug Version</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>My Secretary - AI Powered</title>
   <style>
-    body { font-family: sans-serif; padding: 30px; text-align: center; }
-    textarea { width: 100%; height: 100px; margin-bottom: 10px; }
-    button { width: 100%; padding: 20px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; padding: 20px; text-align: center; background: #f8f9fa; margin: 0; }
+    .container { max-width: 500px; margin: auto; }
+    h2 { color: #1a73e8; font-size: 28px; margin-top: 10px; }
+    .hint { font-size: 14px; color: #5f6368; margin-bottom: 20px; background: #e8f0fe; padding: 12px; border-radius: 8px; border: 1px solid #c2d7ff; text-align: left; line-height: 1.4; }
+    textarea { width: 100%; height: 200px; padding: 15px; border-radius: 12px; font-size: 18px; border: 2px solid #dadce0; box-sizing: border-box; margin-bottom: 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+    button { width: 100%; padding: 18px; background: #1a73e8; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; margin: 8px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    button:active { background: #174ea6; transform: translateY(2px); }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #status { margin-top: 15px; font-weight: bold; color: #1a73e8; min-height: 24px; }
   </style>
 </head>
 <body>
-  <h2>Secretary Debug Mode</h2>
-  <textarea id="transcript" placeholder="Type something here first..."></textarea>
-  
-  <button id="processBtn" onclick="processNote()">✨ Step 1: Click to Start AI</button>
+  <div class="container">
+    <h2>My Secretary</h2>
+    
+    <div class="hint">
+      <b>Example:</b> "Met with Steve Jobs at 2 PM to discuss the new iPhone, follow up next Tuesday."
+    </div>
+
+    <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
+    <textarea id="transcript" placeholder="Speak or type your note here..."></textarea>
+    
+    <button id="processBtn" onclick="processNote()">✨ Process & Save with AI</button>
+    
+    <div id="status"></div>
+  </div>
 
   <script>
-    // 1. PASTE YOUR NEW DEPLOYMENT URL HERE
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzjYsZMkVXnieMfl4Mcy1UkMPYIkt3sLXRO7IOgiliJgCxDWlMC-XTafLtXij9wNP7P/exec";
+    // --- CONFIG ---
+    // PASTE YOUR LATEST GOOGLE DEPLOYMENT URL HERE
+    const GAS_URL = "https://script.google.com/macros/s/YOUR_ACTUAL_ID_HERE/exec";
+
+    function setStatus(msg) {
+      document.getElementById('status').innerText = msg;
+    }
+
+    function startVoice() {
+      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Speech) return alert("Please use Chrome for voice features.");
+      
+      const recognition = new Speech();
+      recognition.lang = "en-US";
+      
+      recognition.onstart = () => {
+        document.getElementById('voiceBtn').innerText = "Listening...";
+        document.getElementById('voiceBtn').style.background = "#ea4335";
+      };
+
+      recognition.onresult = (event) => {
+        document.getElementById('transcript').value = event.results[0][0].transcript;
+      };
+
+      recognition.onend = () => {
+        document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note";
+        document.getElementById('voiceBtn').style.background = "#1a73e8";
+      };
+
+      recognition.start();
+    }
 
     async function processNote() {
-      alert("Step 1: The button works! Now trying to talk to Google...");
-      
       const text = document.getElementById('transcript').value;
-      if (!text) {
-        alert("Error: The text box is empty. Type something first!");
-        return;
-      }
+      if (!text.trim()) return alert("Please enter or speak a note first.");
+
+      const btn = document.getElementById('processBtn');
+      btn.disabled = true;
+      setStatus("🤖 AI is thinking...");
 
       try {
-        alert("Step 2: Sending data to: " + GAS_URL);
-        
-        const res = await fetch(GAS_URL, {
+        // STEP 1: PARSE WITH GEMINI (VIA GAS)
+        const parseRes = await fetch(GAS_URL, {
           method: "POST",
           body: JSON.stringify({ action: "parse", text: text })
         });
 
-        alert("Step 3: Google responded! Now trying to read the result...");
+        const parsed = await parseRes.json();
         
-        const data = await res.json();
-        alert("Success! AI found customer: " + data.customer);
+        if (parsed.error) throw new Error(parsed.error);
+
+        // Smart mapping to prevent "undefined" errors
+        const aiData = {
+          customer: parsed.customer || parsed.Customer || "Unknown",
+          meetingTime: parsed.meetingTime || parsed.MeetingTime || "N/A",
+          followUpDay: parsed.followUpDay || parsed.FollowUpDay || "None",
+          cleanNote: parsed.cleanNote || parsed.CleanNote || text
+        };
+
+        setStatus(`📝 Found: ${aiData.customer}. Saving to Google...`);
+
+        // STEP 2: SAVE TO SHEET
+        const saveRes = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "addNote", ...aiData })
+        });
+
+        const saveResult = await saveRes.json();
         
+        setStatus("✅ Successfully Logged!");
+        document.getElementById('transcript').value = "";
+        
+        setTimeout(() => setStatus(""), 5000);
+
       } catch (err) {
-        alert("CRASH: " + err.message);
         console.error(err);
+        setStatus("❌ Error: " + err.message);
+        alert("Make sure your Google Script Deployment is set to 'Anyone' and you have clicked 'Allow' in the editor.");
+      } finally {
+        btn.disabled = false;
       }
     }
   </script>
