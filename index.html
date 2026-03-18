@@ -12,123 +12,125 @@
   <meta name="theme-color" content="#1a73e8">
 
   <style>
-    body { font-family: 'Segoe UI', Roboto, sans-serif; padding: 20px; text-align: center; background: #f8f9fa; margin: 0; }
-    .container { max-width: 500px; margin: auto; }
-    h2 { color: #1a73e8; font-size: 28px; margin-top: 10px; }
-    .hint { font-size: 14px; color: #5f6368; margin-bottom: 20px; background: #e8f0fe; padding: 12px; border-radius: 8px; border: 1px solid #c2d7ff; text-align: left; line-height: 1.4; }
-    textarea { width: 100%; height: 200px; padding: 15px; border-radius: 12px; font-size: 18px; border: 2px solid #dadce0; box-sizing: border-box; margin-bottom: 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
-    button { width: 100%; padding: 18px; background: #1a73e8; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; margin: 8px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    button:active { background: #174ea6; transform: translateY(2px); }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    #status { margin-top: 15px; font-weight: bold; color: #1a73e8; min-height: 24px; }
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      padding: 0;
+      margin: 0;
+      background: #f8f9fa;
+      text-align: center;
+    }
+
+    header {
+      background: #ffffff;
+      padding: 20px 0 10px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    header img {
+      width: 55px;
+      border-radius: 12px;
+      margin-bottom: 5px;
+    }
+
+    header h2 {
+      color: #1a73e8;
+      font-size: 26px;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .hint {
+      font-size: 14px;
+      color: #5f6368;
+      margin-bottom: 20px;
+      background: #e8f0fe;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #c2d7ff;
+      text-align: left;
+      line-height: 1.4;
+    }
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 15px;
+      border-radius: 12px;
+      font-size: 18px;
+      border: 2px solid #dadce0;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    button {
+      width: 100%;
+      padding: 18px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 18px;
+      cursor: pointer;
+      transition: 0.2s;
+      margin: 8px 0;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    button:active {
+      background: #174ea6;
+      transform: translateY(2px);
+    }
+
+    button.secondary {
+      background: #5f6368;
+    }
+
+    button.secondary:active {
+      background: #3c4043;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+      color: #1a73e8;
+      min-height: 24px;
+    }
   </style>
 </head>
 
 <body>
-  <div class="container">
+
+  <header>
+    <img src="logo-192.png" alt="App Logo">
     <h2>My Secretary</h2>
-    
+  </header>
+
+  <div class="container">
+
     <div class="hint">
-      <b>Example:</b> "Met with Steve Jobs at 2 PM to discuss the new iPhone, follow up next Tuesday."
+      Type your note naturally. Example:<br>
+      <i>“customer tom smith wants samples at the meeting on monday at 2 pm”</i>
     </div>
 
-    <button id="voiceBtn" onclick="startVoice()">🎤 Start Voice Note</button>
-    <textarea id="transcript" placeholder="Speak or type your note here..."></textarea>
-    
-    <button id="processBtn" onclick="processNote()">✨ Process & Save with AI</button>
-    
+    <textarea id="note" placeholder="Enter your note..."></textarea>
+
+    <button onclick="parseNote()">Save Note</button>
+
+    <button class="secondary" onclick="window.open('https://calendar.google.com/calendar/u/0/r', '_blank')">
+      Open Calendar
+    </button>
+
     <div id="status"></div>
+
   </div>
 
-  <script>
-    // --- CONFIG ---
-    const GAS_URL ="https://script.google.com/macros/s/AKfycbw-ZpxCoHEyZfK9r55cwcnufPzBk0YJVYhnxMnPPALbKYV1Uz6IwJHVs-SsA1svvG3j/exec";
-
-    function setStatus(msg) {
-      document.getElementById('status').innerText = msg;
-    }
-
-    function startVoice() {
-      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Speech) return alert("Please use Chrome for voice features.");
-      
-      const recognition = new Speech();
-      recognition.lang = "en-US";
-      
-      recognition.onstart = () => {
-        document.getElementById('voiceBtn').innerText = "Listening...";
-        document.getElementById('voiceBtn').style.background = "#ea4335";
-      };
-
-      recognition.onresult = (event) => {
-        document.getElementById('transcript').value = event.results[0][0].transcript;
-      };
-
-      recognition.onend = () => {
-        document.getElementById('voiceBtn').innerText = "🎤 Start Voice Note";
-        document.getElementById('voiceBtn').style.background = "#1a73e8";
-      };
-
-      recognition.start();
-    }
-
-    async function processNote() {
-      const text = document.getElementById('transcript').value;
-      if (!text.trim()) return alert("Please enter or speak a note first.");
-
-      const btn = document.getElementById('processBtn');
-      btn.disabled = true;
-      setStatus("🤖 AI is thinking...");
-
-      try {
-        // STEP 1: PARSE WITH GEMINI (VIA GAS)
-        const parseRes = await fetch(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "parse", text: text })
-        });
-
-        const parsed = await parseRes.json();
-        
-        if (parsed.error) throw new Error(parsed.error);
-
-        // Smart mapping to prevent undefined values
-        const aiData = {
-          customer: parsed.customer || parsed.Customer || "Unknown",
-          type: parsed.type || "N/A",
-          meetingTime: parsed.meetingTime || null,
-          followUpDay: parsed.followUpDay || null,
-          cleanNote: parsed.cleanNote || text
-        };
-
-        setStatus(`📝 Saving note for: ${aiData.customer}`);
-
-        // STEP 2: SAVE TO SHEET
-        await fetch(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "addNote", ...aiData })
-        });
-
-        setStatus("✅ Saved to Google Sheets!");
-
-        // STEP 3: Calendar (only if meeting)
-        if (aiData.cleanNote.toLowerCase().includes("meeting")) {
-          await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "addCalendar", ...aiData })
-          });
-          setStatus("📅 Calendar updated!");
-        }
-
-        document.getElementById('transcript').value = "";
-        setTimeout(() => setStatus(""), 5000);
-
-      } catch (err) {
-        console.error(err);
-        setStatus("❌ Error: " + err.message);
-      } finally {
-        btn.disabled = false;
-      }
-    }
-  </script>
 </body>
 </html>
