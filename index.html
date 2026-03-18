@@ -127,7 +127,7 @@
 
     <button onclick="saveNote()">Save Note</button>
 
-  <button class="secondary" onclick="openCalendarApp()">
+ <button class="secondary" onclick="openCalendarApp()">
   Open Calendar
 </button>
 
@@ -142,14 +142,15 @@
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbyegkIy2-DoPMil8kvr8dyRJBNNMMS0Jsio9oev4NccCUPZVlA6e6Bb4xeFW2lef-ks/exec';
 function openCalendarApp() {
-  // Try iOS + Android universal scheme
-  window.location.href = "googlecalendar://";
+  // Try to open the Google Calendar app
+  window.location = "googlecalendar://";
 
-  // Fallback for Android devices
+  // Fallback to the web version after 300ms
   setTimeout(() => {
-    window.location.href = "com.google.android.calendar://";
-  }, 200);
+    window.location = "https://calendar.google.com/calendar/u/0/r";
+  }, 300);
 }
+
 
     async function saveNote() {
       const noteEl = document.getElementById('note');
