@@ -141,12 +141,11 @@
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbyegkIy2-DoPMil8kvr8dyRJBNNMMS0Jsio9oev4NccCUPZVlA6e6Bb4xeFW2lef-ks/exec';
 function openCalendarApp() {
-  const calendarId = "tom@smsupply.ca"; // e.g. summitmetalsupply@gmail.com
-  const url = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(calendarId);
-
-  // Opens the app if installed, otherwise opens the web version
+  const calendarId = "tom@smsupply.ca";
+  const url = "https://calendar.google.com/calendar/u/0/r?cid=" + encodeURIComponent(calendarId);
   window.location.href = url;
 }
+
     async function saveNote() {
       const noteEl = document.getElementById('note');
       const statusEl = document.getElementById('status');
